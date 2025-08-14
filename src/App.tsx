@@ -22,6 +22,7 @@ import AnytimeQuizJoin from "./components/quiz/AnytimeQuizJoin";
 import AnytimeQuizPlayerGame from "./components/quiz/AnytimeQuizPlayerGame";
 import AnytimeQuizGamePlay from "./components/quiz/AnytimeQuizGamePlay";
 import LiveQuizPlayerGame from "./components/quiz/LiveQuizPlayerGame";
+import PollPlayerGame from "./components/quiz/PollPlayerGame";
 import AdminApproval from "./components/admin/AdminApproval";
 import Messages from "./components/pages/messages";
 import { AuthProvider, useAuth } from "./components/auth/VercelAuthProvider";
@@ -31,10 +32,12 @@ import { keepDatabaseActive } from "./utils/keepAlive";
 
 // Import tempo routes for storyboard support
 let routes: any[] = [];
-try {
-  routes = require("tempo-routes").default || [];
-} catch (e) {
-  // Tempo routes not available
+if (import.meta.env.VITE_TEMPO) {
+  try {
+    routes = require("tempo-routes").default || [];
+  } catch (e) {
+    // Tempo routes not available
+  }
 }
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -186,7 +189,7 @@ function AppRoutes() {
         />
         <Route
           path="/poll-play/:sessionId/:playerId"
-          element={<LiveQuizPlayerGame />}
+          element={<PollPlayerGame />}
         />
 
         {/* Anytime Quiz Routes */}

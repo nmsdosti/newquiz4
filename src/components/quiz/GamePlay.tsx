@@ -255,14 +255,16 @@ const GamePlay = () => {
             // Update stats immediately without waiting for database refresh
             setAnswerStats((prevStats) => {
               const newStats = { ...prevStats };
-              const uniqueKey = `q${answer.question_index}_${answer.option_id}`;
-              if (newStats.hasOwnProperty(uniqueKey)) {
-                newStats[uniqueKey] = (newStats[uniqueKey] || 0) + 1;
+              if (newStats.hasOwnProperty(answer.option_id)) {
+                newStats[answer.option_id] =
+                  (newStats[answer.option_id] || 0) + 1;
                 console.log(
-                  `[REALTIME] Updated ${uniqueKey} to ${newStats[uniqueKey]}`,
+                  `[REALTIME] Updated ${answer.option_id} to ${newStats[answer.option_id]}`,
                 );
               } else {
-                console.warn(`[REALTIME] Unknown key: ${uniqueKey}`);
+                console.warn(
+                  `[REALTIME] Unknown option_id: ${answer.option_id}`,
+                );
               }
               return newStats;
             });
@@ -281,14 +283,16 @@ const GamePlay = () => {
           // Immediately update stats from broadcast
           setAnswerStats((prevStats) => {
             const newStats = { ...prevStats };
-            const uniqueKey = `q${payload.payload.question_index}_${payload.payload.option_id}`;
-            if (newStats.hasOwnProperty(uniqueKey)) {
-              newStats[uniqueKey] = (newStats[uniqueKey] || 0) + 1;
+            if (newStats.hasOwnProperty(payload.payload.option_id)) {
+              newStats[payload.payload.option_id] =
+                (newStats[payload.payload.option_id] || 0) + 1;
               console.log(
-                `[BROADCAST] Updated ${uniqueKey} to ${newStats[uniqueKey]}`,
+                `[BROADCAST] Updated ${payload.payload.option_id} to ${newStats[payload.payload.option_id]}`,
               );
             } else {
-              console.warn(`[BROADCAST] Unknown key: ${uniqueKey}`);
+              console.warn(
+                `[BROADCAST] Unknown option_id: ${payload.payload.option_id}`,
+              );
             }
             return newStats;
           });
@@ -327,11 +331,10 @@ const GamePlay = () => {
       return;
     }
 
-    // Initialize fresh stats for this question with unique keys
+    // Initialize fresh stats for this question with regular option IDs
     const freshStats: { [key: string]: number } = {};
     currentQ.options.forEach((option) => {
-      const uniqueKey = `q${questionIndex}_${option.id}`;
-      freshStats[uniqueKey] = 0;
+      freshStats[option.id] = 0;
     });
 
     // Set initial state
@@ -633,23 +636,21 @@ const GamePlay = () => {
 
       console.log(`[REFRESH-${refreshId}] Raw answers from DB:`, answers);
 
-      // Create unique keys for this question's options
+      // Initialize stats with regular option IDs (not unique keys)
       const stats: { [key: string]: number } = {};
       currentQ.options.forEach((option) => {
-        const uniqueKey = `q${questionIndex}_${option.id}`;
-        stats[uniqueKey] = 0;
+        stats[option.id] = 0;
         console.log(
-          `[REFRESH-${refreshId}] Initialized stat for key: ${uniqueKey}`,
+          `[REFRESH-${refreshId}] Initialized stat for option: ${option.id}`,
         );
       });
 
-      // Count answers using unique keys
+      // Count answers using regular option IDs
       answers?.forEach((answer) => {
-        const uniqueKey = `q${questionIndex}_${answer.option_id}`;
-        if (stats.hasOwnProperty(uniqueKey)) {
-          stats[uniqueKey]++;
+        if (stats.hasOwnProperty(answer.option_id)) {
+          stats[answer.option_id]++;
           console.log(
-            `[REFRESH-${refreshId}] Incremented ${uniqueKey} to ${stats[uniqueKey]}`,
+            `[REFRESH-${refreshId}] Incremented ${answer.option_id} to ${stats[answer.option_id]}`,
           );
         } else {
           console.warn(
@@ -665,19 +666,13 @@ const GamePlay = () => {
         `Total: ${total}`,
       );
 
-      // Only update state if this is still the current question
-      if (questionIndex === currentStateQuestionIndex) {
-        console.log(
-          `[REFRESH-${refreshId}] Updating state for current question ${questionIndex + 1}`,
-        );
-        setAnswerStats({ ...stats });
-        setTotalAnswers(total);
-        setLastUpdateTime(Date.now());
-      } else {
-        console.log(
-          `[REFRESH-${refreshId}] Skipping state update - question changed from ${questionIndex + 1} to ${currentStateQuestionIndex + 1}`,
-        );
-      }
+      // Always update state for real-time updates
+      console.log(
+        `[REFRESH-${refreshId}] Updating state for question ${questionIndex + 1}`,
+      );
+      setAnswerStats({ ...stats });
+      setTotalAnswers(total);
+      setLastUpdateTime(Date.now());
     } catch (error) {
       console.error(`[REFRESH] Unexpected error:`, error);
     }
@@ -688,7 +683,7 @@ const GamePlay = () => {
     await refreshAnswerStats();
   };
 
-  // Simplified but more reliable polling
+  // Enhanced polling with 1-second intervals
   const startStatsPolling = (questionIndex?: number) => {
     if (pollingRef.current) {
       clearInterval(pollingRef.current);
@@ -700,10 +695,10 @@ const GamePlay = () => {
     setIsPolling(true);
 
     console.log(
-      `[POLLING-${pollId}] Starting aggressive polling for Q${questionAtStart + 1}`,
+      `[POLLING-${pollId}] Starting 1-second polling for Q${questionAtStart + 1}`,
     );
 
-    // Very frequent polling for real-time updates
+    // Poll every second for real-time updates
     pollingRef.current = setInterval(async () => {
       const currentQ = currentQuestionIndex;
 
@@ -733,29 +728,29 @@ const GamePlay = () => {
         }
         setIsPolling(false);
       }
-    }, 150); // Very frequent updates
+    }, 1000); // Update every second as requested
   };
 
-  // Backup auto-refresh system
+  // Backup auto-refresh system - every second
   useEffect(() => {
     let backupRefreshInterval: NodeJS.Timeout;
     const questionForThisEffect = currentQuestionIndex;
 
     if (questionForThisEffect >= 0 && !showResults) {
       console.log(
-        `[BACKUP-REFRESH] Starting backup refresh for Q${questionForThisEffect + 1}`,
+        `[BACKUP-REFRESH] Starting 1-second backup refresh for Q${questionForThisEffect + 1}`,
       );
 
       backupRefreshInterval = setInterval(async () => {
         if (currentQuestionIndex === questionForThisEffect && !showResults) {
           console.log(
-            `[BACKUP-REFRESH] Executing backup refresh for Q${questionForThisEffect + 1}`,
+            `[BACKUP-REFRESH] Executing 1-second backup refresh for Q${questionForThisEffect + 1}`,
           );
           await refreshAnswerStats();
         } else {
           clearInterval(backupRefreshInterval);
         }
-      }, 500); // More frequent backup refresh
+      }, 1000); // Every second as requested
     }
 
     return () => {
@@ -1263,8 +1258,7 @@ const GamePlay = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                 {currentQuestion.options.map((option, index) => {
-                  const uniqueKey = `q${currentQuestionIndex}_${option.id}`;
-                  const answerCount = answerStats[uniqueKey] || 0;
+                  const answerCount = answerStats[option.id] || 0;
                   const percentage =
                     totalAnswers > 0
                       ? Math.round((answerCount / totalAnswers) * 100)
@@ -1277,12 +1271,12 @@ const GamePlay = () => {
                   ];
 
                   console.log(
-                    `[RESULTS] Q${currentQuestionIndex + 1} Option "${option.text}": key=${uniqueKey}, count=${answerCount}, total=${totalAnswers}, percentage=${percentage}%`,
+                    `[RESULTS] Q${currentQuestionIndex + 1} Option "${option.text}": option_id=${option.id}, count=${answerCount}, total=${totalAnswers}, percentage=${percentage}%`,
                   );
 
                   return (
                     <div
-                      key={uniqueKey}
+                      key={option.id}
                       className={`p-6 rounded-xl ${colors[index]} text-white relative overflow-hidden border-2 border-white/20`}
                     >
                       {/* Dark overlay based on percentage */}

@@ -491,19 +491,49 @@ const PollGamePlay = () => {
           </p>
 
           <Card className="bg-white shadow-sm border-gray-100 p-8 mb-8">
-            <div className="max-w-md mx-auto">
-              <h2 className="text-2xl font-bold mb-4">Ready to Start Poll?</h2>
-              <p className="text-gray-600 mb-6">
+            <div className="max-w-2xl mx-auto">
+              <h2 className="text-2xl font-bold mb-4 text-center">
+                Ready to Start Poll?
+              </h2>
+              <p className="text-gray-600 mb-6 text-center">
                 {players.length}{" "}
                 {players.length === 1 ? "participant has" : "participants have"}{" "}
                 joined.
               </p>
-              <Button
-                onClick={startPoll}
-                className="bg-blue-600 hover:bg-blue-700 gap-2 text-lg px-8 py-6 h-auto"
-              >
-                Start Poll
-              </Button>
+
+              {/* Player List */}
+              {players.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-3 text-center">
+                    Joined Players:
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 max-h-40 overflow-y-auto">
+                    {players.map((player, index) => (
+                      <div
+                        key={player.id}
+                        className="bg-gray-50 rounded-lg p-3 text-center border"
+                      >
+                        <div className="text-sm font-medium text-gray-900">
+                          {player.name || `Player ${index + 1}`}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          Joined{" "}
+                          {new Date(player.created_at).toLocaleTimeString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="text-center">
+                <Button
+                  onClick={startPoll}
+                  className="bg-blue-600 hover:bg-blue-700 gap-2 text-lg px-8 py-6 h-auto"
+                >
+                  Start Poll
+                </Button>
+              </div>
             </div>
           </Card>
         </div>

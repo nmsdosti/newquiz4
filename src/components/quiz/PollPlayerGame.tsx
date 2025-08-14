@@ -30,6 +30,7 @@ const PollPlayerGame = () => {
   const [pollEnded, setPollEnded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [waitingForNextQuestion, setWaitingForNextQuestion] = useState(false);
+  const [players, setPlayers] = useState<any[]>([]);
   const channelRef = useRef<any>(null);
   const dbSubscriptionRef = useRef<any>(null);
 
@@ -78,6 +79,19 @@ const PollPlayerGame = () => {
 
       setPollSession(sessionData);
       console.log("[PLAYER] Poll session loaded:", sessionData);
+
+      // Get the players who have joined
+      const { data: playersData, error: playersError } = await supabase
+        .from("poll_players")
+        .select("*")
+        .eq("session_id", sessionId);
+
+      if (playersError) {
+        console.warn("[PLAYER] Error loading players:", playersError);
+      } else {
+        setPlayers(playersData || []);
+        console.log("[PLAYER] Players loaded:", playersData?.length || 0);
+      }
 
       // If the poll is completed, show the end screen
       if (sessionData.status === "completed") {
@@ -130,7 +144,7 @@ const PollPlayerGame = () => {
           table: "poll_sessions",
           filter: `id=eq.${sessionId}`,
         },
-        (payload) => {
+        async (payload) => {
           console.log("[PLAYER] Database change received:", payload);
           const updatedSession = payload.new;
           setPollSession(updatedSession);
@@ -140,6 +154,23 @@ const PollPlayerGame = () => {
             console.log("[PLAYER] Poll ended via database update");
             setPollEnded(true);
             return;
+          }
+
+          // If the poll just started and has a current question
+          if (
+            updatedSession.status === "active" &&
+            updatedSession.current_question_index !== null &&
+            !currentQuestion
+          ) {
+            console.log(
+              "[PLAYER] Poll started via database update, loading question:",
+              updatedSession.current_question_index,
+            );
+            await loadCurrentQuestion(
+              updatedSession.quiz_id,
+              updatedSession.current_question_index,
+            );
+            await checkIfAnswered(updatedSession.current_question_index);
           }
         },
       )
@@ -379,6 +410,15 @@ const PollPlayerGame = () => {
           </div>
           <h1 className="text-3xl font-bold mb-4">Waiting for poll to start</h1>
           <p className="text-xl mb-8">The host will start the poll soon</p>
+
+          {/* Player Count */}
+          <div className="mb-4">
+            <p className="text-lg font-semibold mb-2">
+              {players.length} {players.length === 1 ? "player" : "players"}{" "}
+              joined
+            </p>
+          </div>
+
           <p className="text-sm mb-4 opacity-75">
             Status: {pollSession?.status || "connecting"}
           </p>
