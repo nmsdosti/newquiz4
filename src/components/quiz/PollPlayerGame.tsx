@@ -116,8 +116,20 @@ const PollPlayerGame = () => {
         await checkIfAnswered(sessionData.current_question_index);
       }
 
-      // Set up subscriptions
+      // Set up subscriptions BEFORE checking for active questions
+      // This ensures we don't miss the first question broadcast
       setupSubscriptions();
+
+      // Additional check: If poll is waiting but we should load the first question
+      // This handles the case where the poll just started but we haven't received the broadcast yet
+      if (
+        sessionData.status === "waiting" &&
+        sessionData.current_question_index === 0
+      ) {
+        console.log("[PLAYER] Poll just started, loading first question");
+        await loadCurrentQuestion(sessionData.quiz_id, 0);
+        await checkIfAnswered(0);
+      }
     } catch (error: any) {
       console.error("[PLAYER] Error initializing:", error);
       toast({
@@ -159,8 +171,7 @@ const PollPlayerGame = () => {
           // If the poll just started and has a current question
           if (
             updatedSession.status === "active" &&
-            updatedSession.current_question_index !== null &&
-            !currentQuestion
+            updatedSession.current_question_index !== null
           ) {
             console.log(
               "[PLAYER] Poll started via database update, loading question:",

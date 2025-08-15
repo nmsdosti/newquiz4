@@ -526,7 +526,15 @@ const PollGamePlay = () => {
                 </div>
               )}
 
-              <div className="text-center">
+              <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
+                <Button
+                  onClick={() => navigate(`/poll-monitor/${sessionId}`)}
+                  variant="outline"
+                  className="gap-2 text-lg px-8 py-6 h-auto"
+                >
+                  <Users className="h-5 w-5" />
+                  Monitor Players
+                </Button>
                 <Button
                   onClick={startPoll}
                   className="bg-blue-600 hover:bg-blue-700 gap-2 text-lg px-8 py-6 h-auto"

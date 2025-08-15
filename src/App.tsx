@@ -23,6 +23,7 @@ import AnytimeQuizPlayerGame from "./components/quiz/AnytimeQuizPlayerGame";
 import AnytimeQuizGamePlay from "./components/quiz/AnytimeQuizGamePlay";
 import LiveQuizPlayerGame from "./components/quiz/LiveQuizPlayerGame";
 import PollPlayerGame from "./components/quiz/PollPlayerGame";
+import PollPlayersMonitor from "./components/quiz/PollPlayersMonitor";
 import AdminApproval from "./components/admin/AdminApproval";
 import Messages from "./components/pages/messages";
 import { AuthProvider, useAuth } from "./components/auth/VercelAuthProvider";
@@ -190,6 +191,14 @@ function AppRoutes() {
         <Route
           path="/poll-play/:sessionId/:playerId"
           element={<PollPlayerGame />}
+        />
+        <Route
+          path="/poll-monitor/:sessionId"
+          element={
+            <PrivateRoute>
+              <PollPlayersMonitor />
+            </PrivateRoute>
+          }
         />
 
         {/* Anytime Quiz Routes */}
