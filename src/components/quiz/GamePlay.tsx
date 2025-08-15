@@ -56,9 +56,7 @@ const GamePlay = () => {
   const [totalAnswers, setTotalAnswers] = useState(0);
   const [isCalculatingResults, setIsCalculatingResults] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const [lastUpdateTime, setLastUpdateTime] = useState(0);
-  const [isPolling, setIsPolling] = useState(false);
 
   useEffect(() => {
     if (sessionId) {
@@ -92,9 +90,6 @@ const GamePlay = () => {
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
-      }
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current);
       }
     };
   }, [sessionId]);
@@ -323,7 +318,6 @@ const GamePlay = () => {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
-    stopStatsPolling();
 
     const currentQ = questions[questionIndex];
     if (!currentQ || !currentQ.options) {
@@ -343,9 +337,6 @@ const GamePlay = () => {
     setAnswerStats(freshStats);
     setTotalAnswers(0);
     setLastUpdateTime(Date.now());
-
-    // Start polling for answer stats
-    startStatsPolling(questionIndex);
 
     // Broadcast question start to all participants
     supabase.channel(`game_${sessionId}_sync`).send({
@@ -382,7 +373,6 @@ const GamePlay = () => {
             clearInterval(timerRef.current);
             timerRef.current = null;
           }
-          stopStatsPolling();
 
           // Broadcast time up event
           supabase.channel(`game_${sessionId}_sync`).send({
@@ -438,7 +428,6 @@ const GamePlay = () => {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
-      stopStatsPolling();
 
       // IMMEDIATELY show "Get Ready!" screen - this is the critical fix
       setCurrentQuestionIndex(-2);
@@ -678,100 +667,6 @@ const GamePlay = () => {
     }
   };
 
-  // Immediate fetch without delays for real-time updates
-  const fetchAnswerStatsImmediate = async () => {
-    await refreshAnswerStats();
-  };
-
-  // Enhanced polling with 1-second intervals
-  const startStatsPolling = (questionIndex?: number) => {
-    if (pollingRef.current) {
-      clearInterval(pollingRef.current);
-      pollingRef.current = null;
-    }
-
-    const questionAtStart = questionIndex ?? currentQuestionIndex;
-    const pollId = Date.now();
-    setIsPolling(true);
-
-    console.log(
-      `[POLLING-${pollId}] Starting 1-second polling for Q${questionAtStart + 1}`,
-    );
-
-    // Poll every second for real-time updates
-    pollingRef.current = setInterval(async () => {
-      const currentQ = currentQuestionIndex;
-
-      // Continue polling while on the same question and not showing results
-      if (
-        currentQ >= 0 &&
-        currentQ === questionAtStart &&
-        !showResults &&
-        isPolling
-      ) {
-        try {
-          console.log(
-            `[POLLING-${pollId}] Refreshing stats for Q${questionAtStart + 1}`,
-          );
-          await refreshAnswerStats(questionAtStart);
-        } catch (error) {
-          console.error(`[POLLING-${pollId}] Refresh error:`, error);
-        }
-      } else if (currentQ !== questionAtStart) {
-        // Stop polling when question changes
-        console.log(
-          `[POLLING-${pollId}] Question changed from ${questionAtStart + 1} to ${currentQ + 1}, stopping`,
-        );
-        if (pollingRef.current) {
-          clearInterval(pollingRef.current);
-          pollingRef.current = null;
-        }
-        setIsPolling(false);
-      }
-    }, 1000); // Update every second as requested
-  };
-
-  // Backup auto-refresh system - every second
-  useEffect(() => {
-    let backupRefreshInterval: NodeJS.Timeout;
-    const questionForThisEffect = currentQuestionIndex;
-
-    if (questionForThisEffect >= 0 && !showResults) {
-      console.log(
-        `[BACKUP-REFRESH] Starting 1-second backup refresh for Q${questionForThisEffect + 1}`,
-      );
-
-      backupRefreshInterval = setInterval(async () => {
-        if (currentQuestionIndex === questionForThisEffect && !showResults) {
-          console.log(
-            `[BACKUP-REFRESH] Executing 1-second backup refresh for Q${questionForThisEffect + 1}`,
-          );
-          await refreshAnswerStats();
-        } else {
-          clearInterval(backupRefreshInterval);
-        }
-      }, 1000); // Every second as requested
-    }
-
-    return () => {
-      if (backupRefreshInterval) {
-        clearInterval(backupRefreshInterval);
-        console.log(
-          `[BACKUP-REFRESH] Stopped backup refresh for Q${questionForThisEffect + 1}`,
-        );
-      }
-    };
-  }, [currentQuestionIndex, showResults]);
-
-  // Stop polling
-  const stopStatsPolling = () => {
-    setIsPolling(false);
-    if (pollingRef.current) {
-      clearInterval(pollingRef.current);
-      pollingRef.current = null;
-    }
-  };
-
   const nextQuestion = async () => {
     const nextIndex = currentQuestionIndex + 1;
 
@@ -782,7 +677,6 @@ const GamePlay = () => {
           clearInterval(timerRef.current);
           timerRef.current = null;
         }
-        stopStatsPolling();
 
         await supabase
           .from("game_sessions")
@@ -815,8 +709,7 @@ const GamePlay = () => {
         `[NEXT_QUESTION] Moving from Q${currentQuestionIndex + 1} to Q${nextIndex + 1}`,
       );
 
-      // Clear existing timers and polling
-      stopStatsPolling();
+      // Clear existing timers
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
@@ -1427,7 +1320,7 @@ const GamePlay = () => {
               </div>
               <div className="text-center mt-2">
                 <span className="text-white/60 text-xs">
-                  Auto-refreshing every second
+                  Real-time updates via Supabase
                 </span>
               </div>
             </div>
